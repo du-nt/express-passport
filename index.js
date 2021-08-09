@@ -8,6 +8,7 @@ const passport = require("passport");
 const cookieSession = require("cookie-session");
 
 const config = require("./config/key");
+const { notLogged } = require("./middlewares/auth");
 
 const port = process.env.PORT || 5000;
 
@@ -50,28 +51,47 @@ app.use("/api/users", require("./routes/users"));
 
 app.get(
   "/auth/google",
+  notLogged,
   passport.authenticate("google", {
     scope: ["profile", "email"],
   })
 );
 
-app.get(
-  "/auth/google/callback",
-  passport.authenticate("google"),
-  (req, res) => {
-    res.redirect("http://localhost:3000");
-  }
-);
+app.get("/auth/google/callback", function (req, res, next) {
+  passport.authenticate("google", function (err, user, { nextRoute }) {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      return res.redirect(`${config.clientUrl}${nextRoute}`);
+    }
+    req.logIn(user, function (err) {
+      if (err) {
+        return next(err);
+      }
+      return res.redirect(config.clientUrl);
+    });
+  })(req, res, next);
+});
 
-app.get("/auth/facebook", passport.authenticate("facebook"));
+app.get("/auth/facebook", notLogged, passport.authenticate("facebook"));
 
-app.get(
-  "/auth/facebook/callback",
-  passport.authenticate("facebook"),
-  (req, res) => {
-    res.redirect("http://localhost:3000");
-  }
-);
+app.get("/auth/facebook/callback", function (req, res, next) {
+  passport.authenticate("facebook", function (err, user, { nextRoute }) {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      return res.redirect(`${config.clientUrl}${nextRoute}`);
+    }
+    req.logIn(user, function (err) {
+      if (err) {
+        return next(err);
+      }
+      return res.redirect(config.clientUrl);
+    });
+  })(req, res, next);
+});
 
 // Serve static assets if in production
 if (process.env.NODE_ENV === "production") {

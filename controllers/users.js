@@ -1,8 +1,6 @@
 const passport = require("passport");
 
 const User = require("../models/User");
-const validateRegisterInput = require("../validations/register");
-const validateLoginInput = require("../validations/login");
 
 const getUser = (req, res) => {
   res.status(200).json({
@@ -18,16 +16,9 @@ const register = async (req, res) => {
   try {
     const { email, displayName, password } = req.body;
 
-    const { isValid, errors } = validateRegisterInput(req.body);
-
-    if (!isValid) {
-      return res.status(404).json(errors);
-    }
-
     const user = await User.findOne({ email }).exec();
     if (user) {
-      errors.email = "Email was used";
-      return res.status(404).json(errors);
+      return res.status(404).json({ email: "Email was used" });
     }
 
     const newUser = new User({
@@ -44,13 +35,70 @@ const register = async (req, res) => {
   }
 };
 
+const linkAccount = (req, res, next) => {
+  passport.authenticate("local", async (err, user, info) => {
+    if (err) {
+      return next(err);
+    }
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: "Please provide a valid email and password." });
+    }
+    try {
+      const { userId } = req.params;
+
+      const notVerifiedUser = await User.findOne({
+        _id: userId,
+        email: req.body.email,
+      }).lean();
+
+      if (!notVerifiedUser) {
+        return res
+          .status(404)
+          .json({ message: "Please provide a valid email and password." });
+      }
+      const {
+        _id,
+        __v,
+        avatar,
+        isAdmin,
+        verify,
+        createdAt,
+        displayName,
+        email,
+        updatedAt,
+        ...rest
+      } = notVerifiedUser;
+
+      user.displayName = user.displayName || notVerifiedUser.displayName;
+      user.avatar = user.avatar || notVerifiedUser.avatar;
+      Object.keys(rest).forEach((key) => {
+        user[key] = rest[key];
+      });
+      await user.save();
+      await User.deleteOne({ _id: notVerifiedUser._id });
+
+      req.logIn(user, function (err) {
+        if (err) {
+          return next(err);
+        }
+        return res.status(200).json({
+          _id: user._id,
+          isAdmin: user.isAdmin,
+          email: user.email,
+          displayName: user.displayName,
+          avatar: user.avatar,
+        });
+      });
+    } catch (error) {
+      return next(error);
+    }
+  })(req, res, next);
+};
+
 const login = (req, res, next) => {
-  const { isValid, errors } = validateLoginInput(req.body);
-
-  if (!isValid) {
-    return res.status(404).json(errors);
-  }
-
   passport.authenticate("local", (err, user, info) => {
     if (err) {
       return next(err);
@@ -84,6 +132,7 @@ const logout = (req, res) => {
 
 module.exports = {
   getUser,
+  linkAccount,
   register,
   login,
   logout,

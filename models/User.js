@@ -11,8 +11,6 @@ const userSchema = mongoose.Schema(
     email: {
       type: String,
       trim: true,
-      required: true,
-      unique: true,
     },
     password: {
       type: String,
@@ -27,6 +25,10 @@ const userSchema = mongoose.Schema(
     },
     googleId: String,
     facebookId: String,
+    verify: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

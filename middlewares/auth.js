@@ -1,4 +1,4 @@
-const auth = (req, res, next) => {
+const isLogged = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
   } else {
@@ -9,7 +9,17 @@ const auth = (req, res, next) => {
   }
 };
 
-const adminGuard = (req, res, next) => {
+const notLogged = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return res.status(404).json({
+      error: "You're logged in",
+    });
+  } else {
+    next();
+  }
+};
+
+const isAdmin = (req, res, next) => {
   if (!req.user.isAdmin) {
     return res.status(401).json({
       isAuth: false,
@@ -19,4 +29,4 @@ const adminGuard = (req, res, next) => {
   next();
 };
 
-module.exports = { auth, adminGuard };
+module.exports = { isLogged, notLogged, isAdmin };

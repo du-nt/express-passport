@@ -7,4 +7,5 @@ module.exports = {
   facebookClientId: "223653276271159",
   facebookClientSecret: "66e35aab583fe1223f45b85b243d067b",
   cookieEncryptionKey: "hello",
+  clientUrl: "http://localhost:3000",
 };
